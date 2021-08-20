@@ -305,9 +305,7 @@ func (nl *NodeList) GetNode(name string) dot.Node {
 
 // Helper function to retrieve both the LogicalRouter and the LogicalRouterPort that belong
 // to string "routerPortName"
-func findRouterForRouterPort(
-	routerPortName string,
-	client *goovn.Client) (*goovn.LogicalRouter, *goovn.LogicalRouterPort, error) {
+func findRouterForRouterPort(routerPortName string, client *goovn.Client) (*goovn.LogicalRouter, *goovn.LogicalRouterPort, error) {
 	lrs, err := (*client).LRList()
 	if err != nil {
 		return nil, nil, err
