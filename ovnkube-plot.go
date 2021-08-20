@@ -50,6 +50,7 @@ GLOBAL OPTIONS:{{range $title, $category := getFlagsByCategory}}
 )
 
 var format string
+var filter string
 
 // OVNK8sFeatureFlags capture OVN-Kubernetes feature related options
 var customFlags = []cli.Flag{
@@ -57,6 +58,11 @@ var customFlags = []cli.Flag{
 		Name:        "format",
 		Usage:       "The output format ('compact' or 'legacy')",
 		Destination: &format,
+	},
+	&cli.StringFlag{
+		Name:        "filter",
+		Usage:       "Show only matching nodes",
+		Destination: &filter,
 	},
 }
 
@@ -116,11 +122,14 @@ func runOvnKubePlot(ctx *cli.Context) error {
 		return err
 	}
 
+	if filter == "" {
+		filter = ".*"
+	}
 	var output string
 	if format == "legacy" {
-		output, err = legacyPlot(&ovnNBClient)
+		output, err = legacyPlot(&ovnNBClient, filter)
 	} else {
-		output, err = compactPlot(&ovnNBClient)
+		output, err = compactPlot(&ovnNBClient, filter)
 	}
 
 	if err != nil {
@@ -133,7 +142,7 @@ func runOvnKubePlot(ctx *cli.Context) error {
 }
 
 // legacy POC method
-func legacyPlot(client *goovn.Client) (string, error) {
+func legacyPlot(client *goovn.Client, filter string) (string, error) {
 	g := dot.NewGraph(dot.Directed)
 	// g.Attr("splines", "false")
 	g.Attr("rankdir", "LR")
@@ -293,7 +302,7 @@ func findRouterForRouterPort(routerPortName string, client *goovn.Client) (*goov
 	return nil, nil, nil
 }
 
-func compactPlot(client *goovn.Client) (string, error) {
+func compactPlot(client *goovn.Client, filter string) (string, error) {
 	g := dot.NewGraph(dot.Directed)
 	// g.Attr("splines", "false")
 	g.Attr("rankdir", "LR")
@@ -324,19 +333,6 @@ func compactPlot(client *goovn.Client) (string, error) {
 		debug.PrintStack()
 		return "", err
 	}
-	// get the OVN LogicalRouter table content
-	lrs, err := (*client).LRList()
-	if err != nil {
-		debug.PrintStack()
-		return "", err
-	}
-	// take care of styling
-	for _, ls := range lss {
-		OvnKubeGraphNode(nl.GetNode(ls.Name)).Switch()
-	}
-	for _, lr := range lrs {
-		OvnKubeGraphNode(nl.GetNode(lr.Name)).Router()
-	}
 
 	// "1" and "2"
 	// we draw left to right and we start with all switches that
@@ -344,6 +340,9 @@ func compactPlot(client *goovn.Client) (string, error) {
 	// "join_switch", "node_local_switch", "ext_.*"
 	for _, ls := range lss {
 		if matched, _ := regexp.MatchString("^join.*|^node_local_switch$|^ext_.*", ls.Name); matched {
+			continue
+		}
+		if matched, _ := regexp.MatchString(filter, ls.Name); !matched {
 			continue
 		}
 		// get the OVN LogicalSwitchPorts for this LS
@@ -365,6 +364,8 @@ func compactPlot(client *goovn.Client) (string, error) {
 					).Label(label).Edge(
 						nl.GetNode(lr.Name),
 					)
+					OvnKubeGraphNode(nl.GetNode(ls.Name)).Switch()
+					OvnKubeGraphNode(nl.GetNode(lr.Name)).Router()
 				}
 			} else {
 				g.Edge(nl.GetNode(lsp.Name), nl.GetNode(ls.Name))
@@ -377,9 +378,13 @@ func compactPlot(client *goovn.Client) (string, error) {
 	// retrieve all join switches
 	var joinSwitches []string
 	for _, ls := range lss {
-		if matched, _ := regexp.MatchString("^join.*", ls.Name); matched {
-			joinSwitches = append(joinSwitches, ls.Name)
+		if matched, _ := regexp.MatchString("^join.*", ls.Name); !matched {
+			continue
 		}
+		if matched, _ := regexp.MatchString("^join$|"+filter, ls.Name); !matched {
+			continue
+		}
+		joinSwitches = append(joinSwitches, ls.Name)
 	}
 
 	// "4"
@@ -405,13 +410,15 @@ func compactPlot(client *goovn.Client) (string, error) {
 						).Label(label).Edge(
 							nl.GetNode(js),
 						)
-					} else {
+						OvnKubeGraphNode(nl.GetNode(lr.Name)).Router()
+					} else if matched, _ := regexp.MatchString(filter, lr.Name); matched {
 						label := strings.Join(lrp.Networks, ";")
 						nl.GetNode(js).Edge(
 							OvnKubeGraphNode(nl.GetNode(lr.Name + "spacer1")).Invisible(),
 						).Edge(
 							nl.GetNode(lr.Name),
 						).Label(label)
+						OvnKubeGraphNode(nl.GetNode(lr.Name)).Router()
 					}
 				}
 			} else {
@@ -423,6 +430,9 @@ func compactPlot(client *goovn.Client) (string, error) {
 	// now, add ext_* switches to the right
 	for _, ls := range lss {
 		if matched, _ := regexp.MatchString("^ext_.*", ls.Name); !matched {
+			continue
+		}
+		if matched, _ := regexp.MatchString(filter, ls.Name); !matched {
 			continue
 		}
 		// get the OVN LogicalSwitchPorts for this LS
@@ -438,9 +448,11 @@ func compactPlot(client *goovn.Client) (string, error) {
 				lr, _, err := findRouterForRouterPort(lsp.Options["router-port"].(string), client)
 				if err == nil {
 					g.Edge(nl.GetNode(lr.Name), nl.GetNode(ls.Name))
+					OvnKubeGraphNode(nl.GetNode(lr.Name)).Router()
 				}
 			} else {
 				g.Edge(nl.GetNode(ls.Name), nl.GetNode(lsp.Name))
+				OvnKubeGraphNode(nl.GetNode(ls.Name)).Switch()
 			}
 		}
 	}
