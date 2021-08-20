@@ -55,7 +55,7 @@ var format string
 var customFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:        "format",
-		Usage:       "The output format ('compact' or 'naive')",
+		Usage:       "The output format ('compact' or 'legacy')",
 		Destination: &format,
 	},
 }
@@ -117,8 +117,8 @@ func runOvnKubePlot(ctx *cli.Context) error {
 	}
 
 	var output string
-	if format == "naive" {
-		output, err = naivePlot(&ovnNBClient)
+	if format == "legacy" {
+		output, err = legacyPlot(&ovnNBClient)
 	} else {
 		output, err = compactPlot(&ovnNBClient)
 	}
@@ -133,7 +133,7 @@ func runOvnKubePlot(ctx *cli.Context) error {
 }
 
 // legacy POC method
-func naivePlot(client *goovn.Client) (string, error) {
+func legacyPlot(client *goovn.Client) (string, error) {
 	g := dot.NewGraph(dot.Directed)
 	// g.Attr("splines", "false")
 	g.Attr("rankdir", "LR")
