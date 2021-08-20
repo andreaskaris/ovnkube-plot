@@ -141,10 +141,12 @@ func runOvnKubePlot(ctx *cli.Context) error {
 	return nil
 }
 
-// detailed POC method
+// Draw every switch and router as a subgraph. Add interfaces and routes as individual nodes under the subgraphs.
+// Then, connect all interfaces to each other, with a single connection between pairs
+// Ideal when using the filter expression and when filtering for a very restricted number of nodes
 func detailedPlot(client *goovn.Client, filter string) (string, error) {
 	g := dot.NewGraph(dot.Directed)
-	// g.Attr("splines", "false")
+
 	g.Attr("rankdir", "LR")
 	g.EdgeInitializer(func(e dot.Edge) {
 		e.Attr("fontname", "arial")
@@ -159,6 +161,7 @@ func detailedPlot(client *goovn.Client, filter string) (string, error) {
 		return "", err
 	}
 
+	// first, draw all subgraphs for routers
 	routers := map[string]*dot.Graph{}
 	routerPorts := map[string]dot.Node{}
 	for _, lr := range lrs {
@@ -209,6 +212,7 @@ func detailedPlot(client *goovn.Client, filter string) (string, error) {
 		}
 	}
 
+	// now, draw all subgraphs for switches
 	switches := map[string]*dot.Graph{}
 	switchPorts := map[string]dot.Node{}
 	var lss []*goovn.LogicalSwitch
@@ -232,12 +236,13 @@ func detailedPlot(client *goovn.Client, filter string) (string, error) {
 			switchPorts[lsp.Name].Attr("shape", "box")
 			switchPorts[lsp.Name].Attr("style", "filled")
 			switchPorts[lsp.Name].Attr("color", "white")
-			// g.Edge(switches[ls.Name], switchPorts[lsp.Name])
 			if lsp.Type == "router" {
 				if matched, _ := regexp.MatchString(".*ovn_cluster_router$|.*node_local_switch$|"+filter, lsp.Name); !matched {
 					continue
 				}
 				routerPortName := lsp.Options["router-port"].(string)
+				// this is the only point where we actually draw Edges: from switchports to
+				// associated router ports
 				g.Edge(switchPorts[lsp.Name], routerPorts[routerPortName])
 			}
 		}
@@ -246,7 +251,9 @@ func detailedPlot(client *goovn.Client, filter string) (string, error) {
 	return g.String(), nil
 }
 
-// compact method / new stuff starts here
+// stuff for the compact plot starts below
+
+// create a new type for easy formatting
 type OvnKubeGraphNode dot.Node
 
 func (d OvnKubeGraphNode) Switch() dot.Node {
@@ -271,11 +278,13 @@ func (d OvnKubeGraphNode) Invisible() dot.Node {
 	return dot.Node(d)
 }
 
+// create a NodeList which holds all nodes for a given graph
 type NodeList struct {
 	nodes map[string]dot.Node
 	g     *dot.Graph
 }
 
+// initialize a new node list
 func NewNodeList(g *dot.Graph) *NodeList {
 	return &NodeList{
 		make(map[string]dot.Node),
@@ -283,6 +292,7 @@ func NewNodeList(g *dot.Graph) *NodeList {
 	}
 }
 
+// Retrieve a node or if it does not exist, create it
 func (nl *NodeList) GetNode(name string) dot.Node {
 	if _, ok := nl.nodes[name]; ok {
 		return nl.nodes[name]
@@ -292,6 +302,8 @@ func (nl *NodeList) GetNode(name string) dot.Node {
 	}
 }
 
+// Helper function to retrieve both the LogicalRouter and the LogicalRouterPort that belong
+// to string "routerPortName"
 func findRouterForRouterPort(routerPortName string, client *goovn.Client) (*goovn.LogicalRouter, *goovn.LogicalRouterPort, error) {
 	lrs, err := (*client).LRList()
 	if err != nil {
@@ -311,9 +323,12 @@ func findRouterForRouterPort(routerPortName string, client *goovn.Client) (*goov
 	return nil, nil, nil
 }
 
+// Compact Plotting
+// Ideal for an overview of more complex systems as it provides a cleaner design.
+// Unfortunately, this does not scale to 10s or 100s of nodes, either
 func compactPlot(client *goovn.Client, filter string) (string, error) {
 	g := dot.NewGraph(dot.Directed)
-	// g.Attr("splines", "false")
+
 	g.Attr("rankdir", "LR")
 	g.EdgeInitializer(func(e dot.Edge) {
 		e.Attr("fontname", "arial")
