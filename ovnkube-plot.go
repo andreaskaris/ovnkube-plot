@@ -177,7 +177,8 @@ func detailedPlot(client *goovn.Client, filter string) (string, error) {
 		}
 		staticRoutes, err := (*client).LRSRList(lr.Name)
 		if err == nil {
-			routes := "<table BORDER='0' CELLBORDER='0' CELLSPACING='0' CELLPADDING='0'><tr><td>IPPrefix</td><td>Nexthop</td><td>OutputPort</td><td>Policy</td></tr>"
+			routes := "<table BORDER='0' CELLBORDER='0' CELLSPACING='0' CELLPADDING='0'>" +
+				"<tr><td>IPPrefix</td><td>Nexthop</td><td>OutputPort</td><td>Policy</td></tr>"
 			for _, r := range staticRoutes {
 				routes += fmt.Sprintf("<tr><td>%s</td><td>%s</td>",
 					r.IPPrefix, r.Nexthop)
@@ -304,7 +305,9 @@ func (nl *NodeList) GetNode(name string) dot.Node {
 
 // Helper function to retrieve both the LogicalRouter and the LogicalRouterPort that belong
 // to string "routerPortName"
-func findRouterForRouterPort(routerPortName string, client *goovn.Client) (*goovn.LogicalRouter, *goovn.LogicalRouterPort, error) {
+func findRouterForRouterPort(
+	routerPortName string,
+	client *goovn.Client) (*goovn.LogicalRouter, *goovn.LogicalRouterPort, error) {
 	lrs, err := (*client).LRList()
 	if err != nil {
 		return nil, nil, err
