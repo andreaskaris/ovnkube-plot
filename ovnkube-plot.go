@@ -362,11 +362,19 @@ func compactPlot(client *goovn.Client, filter string) (string, error) {
 	// we draw left to right and we start with all switches that
 	// have chassis names; this means we exclude:
 	// "join_switch", "node_local_switch", "ext_.*"
+	reg1, err := regexp.Compile("^join.*|^node_local_switch$|^ext_.*")
+	if err != nil {
+		return "", err
+	}
+	reg2, err := regexp.Compile(filter)
+	if err != nil {
+		return "", err
+	}
 	for _, ls := range lss {
-		if matched, _ := regexp.MatchString("^join.*|^node_local_switch$|^ext_.*", ls.Name); matched {
+		if reg1.Match([]byte(ls.Name)) {
 			continue
 		}
-		if matched, _ := regexp.MatchString(filter, ls.Name); !matched {
+		if !reg2.Match([]byte(ls.Name)) {
 			continue
 		}
 		// get the OVN LogicalSwitchPorts for this LS
@@ -401,11 +409,19 @@ func compactPlot(client *goovn.Client, filter string) (string, error) {
 	// 2 different designs - either one join switch, or one join switch per node
 	// retrieve all join switches
 	var joinSwitches []string
+	reg1, err = regexp.Compile("^join.*")
+	if err != nil {
+		return "", err
+	}
+	reg2, err = regexp.Compile("^join$|" + filter)
+	if err != nil {
+		return "", err
+	}
 	for _, ls := range lss {
-		if matched, _ := regexp.MatchString("^join.*", ls.Name); !matched {
+		if !reg1.Match([]byte(ls.Name)) {
 			continue
 		}
-		if matched, _ := regexp.MatchString("^join$|"+filter, ls.Name); !matched {
+		if !reg2.Match([]byte(ls.Name)) {
 			continue
 		}
 		joinSwitches = append(joinSwitches, ls.Name)
@@ -452,11 +468,19 @@ func compactPlot(client *goovn.Client, filter string) (string, error) {
 	}
 
 	// now, add ext_* switches to the right
+	reg1, err = regexp.Compile("^ext_.*")
+	if err != nil {
+		return "", err
+	}
+	reg2, err = regexp.Compile(filter)
+	if err != nil {
+		return "", err
+	}
 	for _, ls := range lss {
-		if matched, _ := regexp.MatchString("^ext_.*", ls.Name); !matched {
+		if !reg1.Match([]byte(ls.Name)) {
 			continue
 		}
-		if matched, _ := regexp.MatchString(filter, ls.Name); !matched {
+		if !reg2.Match([]byte(ls.Name)) {
 			continue
 		}
 		// get the OVN LogicalSwitchPorts for this LS
@@ -482,10 +506,15 @@ func compactPlot(client *goovn.Client, filter string) (string, error) {
 	}
 
 	// now, add the node_local_switch
+	reg1, err = regexp.Compile("^node_local_switch$")
+	if err != nil {
+		return "", err
+	}
 	for _, ls := range lss {
-		if matched, _ := regexp.MatchString("^node_local_switch$", ls.Name); !matched {
+		if !reg1.Match([]byte(ls.Name)) {
 			continue
 		}
+		OvnKubeGraphNode(nl.GetNode(ls.Name)).Switch()
 		// get the OVN LogicalSwitchPorts for this LS
 		lsps, err := (*client).LSPList(ls.Name)
 		if err != nil {
