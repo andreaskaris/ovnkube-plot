@@ -56,7 +56,7 @@ var filter string
 var customFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:        "format",
-		Usage:       "The output format ('compact' or 'legacy')",
+		Usage:       "The output format ('compact' or 'detailed')",
 		Destination: &format,
 	},
 	&cli.StringFlag{
@@ -126,8 +126,8 @@ func runOvnKubePlot(ctx *cli.Context) error {
 		filter = ".*"
 	}
 	var output string
-	if format == "legacy" {
-		output, err = legacyPlot(&ovnNBClient, filter)
+	if format == "detailed" {
+		output, err = detailedPlot(&ovnNBClient, filter)
 	} else {
 		output, err = compactPlot(&ovnNBClient, filter)
 	}
@@ -141,8 +141,8 @@ func runOvnKubePlot(ctx *cli.Context) error {
 	return nil
 }
 
-// legacy POC method
-func legacyPlot(client *goovn.Client, filter string) (string, error) {
+// detailed POC method
+func detailedPlot(client *goovn.Client, filter string) (string, error) {
 	g := dot.NewGraph(dot.Directed)
 	// g.Attr("splines", "false")
 	g.Attr("rankdir", "LR")
@@ -162,6 +162,9 @@ func legacyPlot(client *goovn.Client, filter string) (string, error) {
 	routers := map[string]*dot.Graph{}
 	routerPorts := map[string]dot.Node{}
 	for _, lr := range lrs {
+		if matched, _ := regexp.MatchString("^join$|^ovn_cluster_router$|^node_local_switch$|"+filter, lr.Name); !matched {
+			continue
+		}
 		routers[lr.Name] = g.Subgraph(lr.Name, dot.ClusterOption{})
 		routers[lr.Name].Attr("style", "filled")
 		routers[lr.Name].Attr("color", "0.7 0.7 1.0")
@@ -214,6 +217,9 @@ func legacyPlot(client *goovn.Client, filter string) (string, error) {
 		return "", err
 	}
 	for _, ls := range lss {
+		if matched, _ := regexp.MatchString("^join$|^ovn_cluster_router$|^node_local_switch$|"+filter, ls.Name); !matched {
+			continue
+		}
 		switches[ls.Name] = g.Subgraph(ls.Name, dot.ClusterOption{})
 		switches[ls.Name].Attr("style", "filled")
 		switches[ls.Name].Attr("color", "0.4 1.0 0.6")
@@ -228,6 +234,9 @@ func legacyPlot(client *goovn.Client, filter string) (string, error) {
 			switchPorts[lsp.Name].Attr("color", "white")
 			// g.Edge(switches[ls.Name], switchPorts[lsp.Name])
 			if lsp.Type == "router" {
+				if matched, _ := regexp.MatchString(".*ovn_cluster_router$|.*node_local_switch$|"+filter, lsp.Name); !matched {
+					continue
+				}
 				routerPortName := lsp.Options["router-port"].(string)
 				g.Edge(switchPorts[lsp.Name], routerPorts[routerPortName])
 			}
