@@ -404,7 +404,7 @@ func compactPlot(client *goovn.Client, filter string) (string, error) {
 				}
 			} else {
 				g.Edge(nl.GetNode(lsp.Name), nl.GetNode(ls.Name))
-				OvnKubeGraphNode(nl.GetNode(lsp.Name)).Switch()
+				OvnKubeGraphNode(nl.GetNode(lsp.Name)).Leaf()
 			}
 		}
 	}
@@ -468,6 +468,7 @@ func compactPlot(client *goovn.Client, filter string) (string, error) {
 				g.Edge(nl.GetNode(js), nl.GetNode(lsp.Name))
 			}
 		}
+		OvnKubeGraphNode(nl.GetNode(js)).Switch()
 	}
 
 	// now, add ext_* switches to the right
