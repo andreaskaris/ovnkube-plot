@@ -404,7 +404,7 @@ func compactPlot(client *goovn.Client, filter string) (string, error) {
 				}
 			} else {
 				g.Edge(nl.GetNode(lsp.Name), nl.GetNode(ls.Name))
-				OvnKubeGraphNode(nl.GetNode(lsp.Name)).Leaf()
+				OvnKubeGraphNode(nl.GetNode(lsp.Name)).Switch()
 			}
 		}
 	}
