@@ -1,6 +1,6 @@
 module github.com/andreaskaris/ovnkube-plot
 
-go 1.17
+go 1.24
 
 require (
 	github.com/ebay/go-ovn v0.1.1-0.20210731003635-d96abc06b52c
