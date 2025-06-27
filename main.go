@@ -62,11 +62,13 @@ var customFlags = []cli.Flag{ //nolint: gochecknoglobals // skipping
 	&cli.StringFlag{
 		Name:        "format",
 		Usage:       "The output format ('compact' or 'detailed')",
+		Value:       "compact",
 		Destination: &format,
 	},
 	&cli.StringFlag{
 		Name:        "filter",
 		Usage:       "Show only matching nodes",
+		Value:       ".*",
 		Destination: &filter,
 	},
 	&cli.StringFlag{
@@ -129,10 +131,6 @@ func runOvnKubePlot(ctx *cli.Context) error {
 	var ovnNBClient goovn.Client
 	if ovnNBClient, err = util.NewOVNNBClient(); err != nil {
 		return err
-	}
-
-	if filter == "" {
-		filter = ".*"
 	}
 
 	var plotMode ovnplot.Mode

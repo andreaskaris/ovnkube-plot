@@ -23,8 +23,9 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    OVN KUBEPLOT OPTIONS
-   --format value  The output format ('compact' or 'detailed')
-   --filter value  Show only matching nodes
+   --format value  The output format ('compact' or 'detailed') (default: "compact")
+   --filter value  Show only matching nodes (default: ".*")
+   --mode value    The mode to use ('auto', 'ovn-kubernetes', or 'ovn') (default: "auto")
    
    OVN NORTHBOUND DB OPTIONS
    --nb-address value              IP address and port of the OVN northbound API (eg, ssl:1.2.3.4:6641,ssl:1.2.3.5:6642).  Leave empty to use a local unix socket.
@@ -37,7 +38,15 @@ GLOBAL OPTIONS:
 
 Example:
 ~~~
-bin/ovnkube-plot  --nb-address=tcp://172.18.0.3:6641,tcp://172.18.0.2:6641,tcp://172.18.0.4:6641 --sb-address=tcp://172.18.0.3:6642,tcp://172.18.0.2:6642,tcp://172.18.0.4:6642 > plot.txt
-cat dot.txt | dot -Tpdf > plot.pdf
-evince plot.pdf
+# make plot
+bin/ovnkube-plot --filter=".*" --mode auto --nb-address=tcp://172.18.0.3:6641,tcp://172.18.0.2:6641,tcp://172.18.0.4:6641  --sb-address=tcp://172.18.0.3:6642,tcp://172.18.0.2:6642,tcp://172.18.0.4:6642  > output/compact.txt
+I0627 17:09:37.248998  304063 ovs.go:98] Maximum command line arguments set to: 191102
+I0627 17:09:37.256058  304063 go_ovn.go:165] Created OVNDB TCP client for db: OVN_Northbound
+I0627 17:09:37.256081  304063 go_ovn.go:41] Created OVN NB client with Scheme: tcp
+cat output/compact.txt | dot -Tpdf > output/compact.pdf
+bin/ovnkube-plot --filter=".*" --mode auto --format detailed --nb-address=tcp://172.18.0.3:6641,tcp://172.18.0.2:6641,tcp://172.18.0.4:6641  --sb-address=tcp://172.18.0.3:6642,tcp://172.18.0.2:6642,tcp://172.18.0.4:6642  > output/detailed.txt
+I0627 17:09:37.359020  304093 ovs.go:98] Maximum command line arguments set to: 191102
+I0627 17:09:37.366110  304093 go_ovn.go:165] Created OVNDB TCP client for db: OVN_Northbound
+I0627 17:09:37.366140  304093 go_ovn.go:41] Created OVN NB client with Scheme: tcp
+cat output/detailed.txt | dot -Tpdf > output/detailed.pdf
 ~~~
